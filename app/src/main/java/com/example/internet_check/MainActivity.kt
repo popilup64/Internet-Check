@@ -15,10 +15,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var mainLayout: androidx.constraintlayout.widget.ConstraintLayout
 
     private val websites = listOf(
-        "https://photomath.com/",
-        "https://deepseek.com/en/",
-        "https://github.com/",
-        "https://www.mathway.com/ru/"
+        "https://yandex.ru/",
+        "https://google.com/",
+        "https://vk.com/",
+        "https://dzen.ru/",
+        "https://mail.ru/"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
