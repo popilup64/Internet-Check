@@ -17,7 +17,6 @@ class MainActivity : AppCompatActivity() {
     // Сайты, которые должны быть в белом списке (разрешены в РФ)
     private val whiteListSites = listOf(
         "https://yandex.ru/",
-        "https://vk.com/",
         "https://mail.ru/",
         "https://dzen.ru/",
         "https://gosuslugi.ru/"
@@ -27,10 +26,7 @@ class MainActivity : AppCompatActivity() {
     private val nonWhiteListSites = listOf(
         "https://photomath.com/",
         "https://deepseek.com/en/",
-        "https://github.com/",
         "https://www.mathway.com/ru/",
-        "https://chat.openai.com/",
-        "https://www.wikipedia.org/"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
