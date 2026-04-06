@@ -37,6 +37,7 @@
         android:textColorHighlight="#FFFFFF"
         android:textColorHint="#EFEFEF"
         android:textColorLink="#205F23"
+
         android:shadowRadius="2"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"

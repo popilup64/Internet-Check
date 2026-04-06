@@ -8,25 +8,20 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.SocketTimeoutException
 
 class MainActivity : AppCompatActivity() {
     private lateinit var button: Button
     private lateinit var text: TextView
     private lateinit var mainLayout: androidx.constraintlayout.widget.ConstraintLayout
 
-    // Сайты, которые должны быть в белом списке (разрешены в РФ)
-    private val whiteListSites = listOf(
-        "https://yandex.ru/",
-        "https://mail.ru/",
-        "https://dzen.ru/",
-        "https://gosuslugi.ru/"
-    )
-
-    // Сайты, которые НЕ в белом списке (потенциально заблокированы)
-    private val nonWhiteListSites = listOf(
+    private var lastClickTime = 0L
+    private val CLICK_DELAY = 3000L
+    // Сайты для проверки
+    private val sitesToCheck = listOf(
         "https://photomath.com/",
         "https://deepseek.com/en/",
-        "https://www.mathway.com/ru/",
+        "https://www.mathway.com/ru/"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,93 +31,56 @@ class MainActivity : AppCompatActivity() {
         button = findViewById(R.id.button)
         text = findViewById(R.id.text)
         mainLayout = findViewById(R.id.main)
+        button.setBackgroundColor(Color.parseColor("#2196F3"))
+
 
         button.setOnClickListener {
-            text.text = "Анализ фильтрации трафика...\n"
+            if (System.currentTimeMillis() - lastClickTime < CLICK_DELAY) return@setOnClickListener
+            lastClickTime = System.currentTimeMillis()
+
+            text.text = "TEST..."
+            button.isEnabled = false
             Thread {
-                checkWhiteListFilter()
+                checkInternet()
             }.start()
         }
     }
 
-    private fun checkWhiteListFilter() {
-        val results = StringBuilder()
+    private fun checkInternet() {
+        var hasInternet = false
 
-        // 1. Проверяем доступность "белых" сайтов
-        results.append("🔍 ПРОВЕРКА БЕЛОГО СПИСКА (ТСПУ)\n")
-        results.append("=".repeat(40) + "\n\n")
-
-        results.append("📋 Сайты из белого списка (должны быть доступны):\n")
-        var whiteListAvailable = 0
-
-        for (site in whiteListSites) {
-            val available = checkSite(site)
-            if (available) whiteListAvailable++
-            val status = if (available) "✅ ДОСТУПЕН" else "❌ НЕДОСТУПЕН"
-            results.append("   $status | $site\n")
-        }
-
-        results.append("\n📋 Сайты НЕ из белого списка (могут быть заблокированы):\n")
-        var nonWhiteListAvailable = 0
-
-        for (site in nonWhiteListSites) {
-            val available = checkSite(site)
-            if (available) nonWhiteListAvailable++
-            val status = if (available) "✅ ДОСТУПЕН" else "❌ ЗАБЛОКИРОВАН"
-            results.append("   $status | $site\n")
-        }
-
-        // 2. Анализ результатов
-        results.append("\n" + "=".repeat(40) + "\n")
-        results.append("📊 РЕЗУЛЬТАТЫ АНАЛИЗА:\n\n")
-
-        val whitePercent = (whiteListAvailable * 100 / whiteListSites.size)
-        val nonWhitePercent = (nonWhiteListAvailable * 100 / nonWhiteListSites.size)
-
-        results.append("Белый список: $whiteListAvailable/${whiteListSites.size} доступно ($whitePercent%)\n")
-        results.append("Остальные сайты: $nonWhiteListAvailable/${nonWhiteListSites.size} доступно ($nonWhitePercent%)\n\n")
-
-        // 3. Определяем статус фильтрации
-        val filterStatus = when {
-            whitePercent >= 80 && nonWhitePercent <= 30 -> {
-                "🔴 БЕЛЫЙ СПИСОК ВКЛЮЧЕН!\nФильтрация трафика активна.\nБольшинство сайтов не из белого списка заблокированы."
-            }
-            whitePercent >= 80 && nonWhitePercent >= 70 -> {
-                "🟡 БЕЛЫЙ СПИСОК НЕ АКТИВЕН\nФильтрация не обнаружена.\nДоступны почти все сайты."
-            }
-            whitePercent < 50 -> {
-                "⚠️ ПРОБЛЕМЫ С ИНТЕРНЕТОМ\nМногие сайты недоступны. Проверьте подключение."
-            }
-            else -> {
-                "🟠 ЧАСТИЧНАЯ ФИЛЬТРАЦИЯ\nНекоторые сайты из белого списка недоступны, некоторые заблокированы."
+        // Проверяем каждый сайт
+        for (site in sitesToCheck) {
+            if (checkSite(site)) {
+                hasInternet = true
+                break // Если хоть один сайт доступен - интернет есть
             }
         }
-
-        results.append("$filterStatus\n")
 
         runOnUiThread {
-            text.text = results.toString()
+            button.isEnabled = true
 
-            // Меняем цвет фона в зависимости от статуса
-            when {
-                filterStatus.contains("ВКЛЮЧЕН") -> {
-                    mainLayout.setBackgroundColor(Color.parseColor("#FF9800"))  // Оранжевый - фильтрация есть
-                    button.setBackgroundColor(Color.parseColor("#E65100"))
-                }
-                filterStatus.contains("НЕ АКТИВЕН") -> {
-                    mainLayout.setBackgroundColor(Color.parseColor("#4CAF50"))  // Зеленый - фильтрации нет
-                    button.setBackgroundColor(Color.parseColor("#2E7D32"))
-                }
-                else -> {
-                    mainLayout.setBackgroundColor(Color.parseColor("#F44336"))  // Красный - проблемы
-                    button.setBackgroundColor(Color.parseColor("#C62828"))
-                }
+            if (hasInternet) {
+                text.text = "✅"  // Только галочка
+                text.textSize = 65f
+                mainLayout.setBackgroundColor(Color.parseColor("#4CAF50")) // Зеленый
+                button.setBackgroundColor(Color.parseColor("#2E7D32"))
+                Toast.makeText(this, "Интернет есть", Toast.LENGTH_SHORT).show()
+            } else {
+                text.text = "❌"  // Только крестик
+                text.textSize = 65f
+                mainLayout.setBackgroundColor(Color.parseColor("#F44336")) // Красный
+                button.setBackgroundColor(Color.parseColor("#C62828"))
+                Toast.makeText(this, "Интернета нет", Toast.LENGTH_SHORT).show()
             }
 
             text.setTextColor(Color.WHITE)
             button.setTextColor(Color.WHITE)
 
-            Toast.makeText(this, filterStatus.take(50), Toast.LENGTH_LONG).show()
+            // Возврат в исходное состояние через 3 секунды
+            button.postDelayed({
+                resetToDefault()
+            }, 3000)
         }
     }
 
@@ -130,9 +88,9 @@ class MainActivity : AppCompatActivity() {
         return try {
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
-            connection.connectTimeout = 5000
-            connection.readTimeout = 5000
-            connection.requestMethod = "GET"
+            connection.connectTimeout = 3000
+            connection.readTimeout = 3000
+            connection.requestMethod = "HEAD"
             connection.instanceFollowRedirects = true
 
             connection.connect()
@@ -140,8 +98,21 @@ class MainActivity : AppCompatActivity() {
             connection.disconnect()
 
             code in 200..399
+        } catch (e: SocketTimeoutException) {
+            false
         } catch (e: Exception) {
             false
         }
+    }
+
+    private fun resetToDefault() {
+        mainLayout.setBackgroundColor(Color.parseColor("#E0E0E0"))  // Серый фон
+        button.setBackgroundColor(Color.parseColor("#2196F3"))     // Синяя кнопка
+        text.textSize = 30f
+        button.text = "CHECK"
+        text.text = "Check Internet"
+        text.setTextColor(Color.BLACK)
+        button.setTextColor(Color.WHITE)
+        button.isEnabled = true
     }
 }
