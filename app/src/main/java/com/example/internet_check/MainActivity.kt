@@ -17,6 +17,7 @@ class MainActivity : AppCompatActivity() {
 
     private var lastClickTime = 0L
     private val CLICK_DELAY = 3000L
+
     // Сайты для проверки
     private val sitesToCheck = listOf(
         "https://photomath.com/",
@@ -33,7 +34,6 @@ class MainActivity : AppCompatActivity() {
         mainLayout = findViewById(R.id.main)
         button.setBackgroundColor(Color.parseColor("#2196F3"))
 
-
         button.setOnClickListener {
             if (System.currentTimeMillis() - lastClickTime < CLICK_DELAY) return@setOnClickListener
             lastClickTime = System.currentTimeMillis()
@@ -47,13 +47,35 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkInternet() {
-        var hasInternet = false
+        // Проверяем первый сайт
+        val firstSiteAvailable = checkSite(sitesToCheck[0])
 
-        // Проверяем каждый сайт
+        if (!firstSiteAvailable) {
+            // Если первый сайт недоступен - сразу показываем результат
+            runOnUiThread {
+                button.isEnabled = true
+                text.text = "❌"
+                text.textSize = 50f
+                mainLayout.setBackgroundColor(Color.parseColor("#F44336"))
+                button.setBackgroundColor(Color.parseColor("#C62828"))
+                text.setTextColor(Color.WHITE)
+                button.setTextColor(Color.WHITE)
+                Toast.makeText(this, "Интернета нет", Toast.LENGTH_SHORT).show()
+
+                button.postDelayed({
+                    resetToDefault()
+                }, 3000)
+            }
+            return
+        }
+
+        // Если первый сайт доступен - проверяем остальные (опционально)
+        var hasInternet = true
+
         for (site in sitesToCheck) {
             if (checkSite(site)) {
                 hasInternet = true
-                break // Если хоть один сайт доступен - интернет есть
+                break
             }
         }
 
@@ -61,23 +83,16 @@ class MainActivity : AppCompatActivity() {
             button.isEnabled = true
 
             if (hasInternet) {
-                text.text = "✅"  // Только галочка
-                text.textSize = 65f
-                mainLayout.setBackgroundColor(Color.parseColor("#4CAF50")) // Зеленый
+                text.text = "✅"
+                text.textSize = 50f
+                mainLayout.setBackgroundColor(Color.parseColor("#4CAF50"))
                 button.setBackgroundColor(Color.parseColor("#2E7D32"))
                 Toast.makeText(this, "Интернет есть", Toast.LENGTH_SHORT).show()
-            } else {
-                text.text = "❌"  // Только крестик
-                text.textSize = 65f
-                mainLayout.setBackgroundColor(Color.parseColor("#F44336")) // Красный
-                button.setBackgroundColor(Color.parseColor("#C62828"))
-                Toast.makeText(this, "Интернета нет", Toast.LENGTH_SHORT).show()
             }
 
             text.setTextColor(Color.WHITE)
             button.setTextColor(Color.WHITE)
 
-            // Возврат в исходное состояние через 3 секунды
             button.postDelayed({
                 resetToDefault()
             }, 3000)
@@ -106,8 +121,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun resetToDefault() {
-        mainLayout.setBackgroundColor(Color.parseColor("#E0E0E0"))  // Серый фон
-        button.setBackgroundColor(Color.parseColor("#2196F3"))     // Синяя кнопка
+        mainLayout.setBackgroundColor(Color.parseColor("#E0E0E0"))
+        button.setBackgroundColor(Color.parseColor("#2196F3"))
         text.textSize = 30f
         button.text = "CHECK"
         text.text = "Check Internet"

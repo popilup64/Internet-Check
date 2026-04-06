@@ -26,17 +26,28 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
+    }
+
+    // Переименование APK - ПРАВИЛЬНОЕ МЕСТО
+    applicationVariants.all {
+        outputs.all {
+            val appName = "InternetChecker"
+            val version = "1.0"
+
+            (this as com.android.build.gradle.internal.api.ApkVariantOutputImpl).outputFileName = "${appName}_v${version}.apk"
+        }
     }
 }
 
 dependencies {
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
