@@ -40,7 +40,7 @@ android {
     applicationVariants.all {
         outputs.all {
             val appName = "InternetChecker"
-            val version = "1.3"
+            val version = "2.1"
 
             (this as com.android.build.gradle.internal.api.ApkVariantOutputImpl).outputFileName = "${appName}_v${version}.apk"
         }
