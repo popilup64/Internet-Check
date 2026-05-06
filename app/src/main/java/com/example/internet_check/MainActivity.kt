@@ -18,17 +18,11 @@ class MainActivity : AppCompatActivity() {
     private var lastClickTime = 0L
     private val CLICK_DELAY = 3000L
 
-    // Сайты для проверки (могут быть заблокированы) - ТЕ ЖЕ, ЧТО В ВИДЖЕТЕ
+    // Сайты для проверки
     private val sitesToCheck = listOf(
         "https://photomath.com/",
         "https://deepseek.com/en/",
         "https://www.mathway.com/ru/"
-    )
-
-    // Сайты из белого списка (работают в РФ) - ТЕ ЖЕ, ЧТО В ВИДЖЕТЕ
-    private val whiteListSites = listOf(
-        "https://yandex.ru/",
-        "https://vk.com/"
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,69 +38,56 @@ class MainActivity : AppCompatActivity() {
             if (System.currentTimeMillis() - lastClickTime < CLICK_DELAY) return@setOnClickListener
             lastClickTime = System.currentTimeMillis()
 
-            text.text = "Проверка..."
+            text.text = "TEST..."
             button.isEnabled = false
             Thread {
-                checkInternetAndWhiteList()
+                checkInternet()
             }.start()
         }
     }
 
-    private fun checkInternetAndWhiteList() {
-        // Проверяем сайты из белого списка
-        var whiteListAvailable = 0
-        for (site in whiteListSites) {
-            val result = checkSite(site)
-            android.util.Log.d("MainActivity", "Белый сайт $site - $result")
-            if (result) {
-                whiteListAvailable++
-            }
-        }
-        val whitePercent = (whiteListAvailable * 100 / whiteListSites.size)
+    private fun checkInternet() {
+        // Проверяем первый сайт
+        val firstSiteAvailable = checkSite(sitesToCheck[0])
 
-        // Проверяем остальные сайты
-        var otherSitesAvailable = 0
+        if (!firstSiteAvailable) {
+            // Если первый сайт недоступен - сразу показываем результат
+            runOnUiThread {
+                button.isEnabled = true
+                text.text = "❌"
+                text.textSize = 50f
+                mainLayout.setBackgroundColor(Color.parseColor("#F44336"))
+                button.setBackgroundColor(Color.parseColor("#C62828"))
+                text.setTextColor(Color.WHITE)
+                button.setTextColor(Color.WHITE)
+                Toast.makeText(this, "Интернета нет", Toast.LENGTH_SHORT).show()
+
+                button.postDelayed({
+                    resetToDefault()
+                }, 3000)
+            }
+            return
+        }
+
+        // Если первый сайт доступен - проверяем остальные (опционально)
+        var hasInternet = true
+
         for (site in sitesToCheck) {
-            val result = checkSite(site)
-            android.util.Log.d("MainActivity", "Проверяемый сайт $site - $result")
-            if (result) {
-                otherSitesAvailable++
+            if (checkSite(site)) {
+                hasInternet = true
+                break
             }
         }
-        val otherPercent = (otherSitesAvailable * 100 / sitesToCheck.size)
-
-        // Логирование для отладки
-        android.util.Log.d("MainActivity", "whitePercent = $whitePercent, otherPercent = $otherPercent")
 
         runOnUiThread {
             button.isEnabled = true
 
-            // Анализ как в виджете
-            when {
-                whitePercent >= 80 && otherPercent <= 30 -> {
-                    text.text = "❌"
-                    text.textSize = 50f
-                    mainLayout.setBackgroundColor(Color.parseColor("#FF9800")) // Оранжевый
-                    button.setBackgroundColor(Color.parseColor("#E65100"))
-                    Toast.makeText(this, "Белый список ВКЛЮЧЕН", Toast.LENGTH_SHORT).show()
-                    android.util.Log.d("MainActivity", "Результат: БЕЛЫЙ СПИСОК ВКЛЮЧЕН")
-                }
-                whitePercent >= 80 && otherPercent >= 70 -> {
-                    text.text = "✅"
-                    text.textSize = 50f
-                    mainLayout.setBackgroundColor(Color.parseColor("#4CAF50")) // Зеленый
-                    button.setBackgroundColor(Color.parseColor("#2E7D32"))
-                    Toast.makeText(this, "Интернет есть", Toast.LENGTH_SHORT).show()
-                    android.util.Log.d("MainActivity", "Результат: ИНТЕРНЕТ ЕСТЬ")
-                }
-                else -> {
-                    text.text = "❌"
-                    text.textSize = 50f
-                    mainLayout.setBackgroundColor(Color.parseColor("#F44336")) // Красный
-                    button.setBackgroundColor(Color.parseColor("#C62828"))
-                    Toast.makeText(this, "Нет интернета", Toast.LENGTH_SHORT).show()
-                    android.util.Log.d("MainActivity", "Результат: НЕТ ИНТЕРНЕТА (whitePercent=$whitePercent, otherPercent=$otherPercent)")
-                }
+            if (hasInternet) {
+                text.text = "✅"
+                text.textSize = 50f
+                mainLayout.setBackgroundColor(Color.parseColor("#4CAF50"))
+                button.setBackgroundColor(Color.parseColor("#2E7D32"))
+                Toast.makeText(this, "Интернет есть", Toast.LENGTH_SHORT).show()
             }
 
             text.setTextColor(Color.WHITE)
