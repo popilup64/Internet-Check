@@ -14,10 +14,17 @@ import kotlin.concurrent.thread
 
 class InternetWidget : AppWidgetProvider() {
 
+    // Сайты для проверки (могут быть заблокированы)
     private val sitesToCheck = listOf(
         "https://photomath.com/",
         "https://deepseek.com/en/",
         "https://www.mathway.com/ru/"
+    )
+
+    // Сайты из белого списка (работают в РФ)
+    private val whiteListSites = listOf(
+        "https://yandex.ru/",
+        "https://vk.com/"
     )
 
     override fun onUpdate(
@@ -25,7 +32,6 @@ class InternetWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
-        // Автоматическое обновление каждые 30 минут
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -74,9 +80,9 @@ class InternetWidget : AppWidgetProvider() {
         // Запускаем анимацию точек
         startDotsAnimation(context, appWidgetManager, appWidgetId, pendingUpdate)
 
-        // Проверка интернета
+        // Проверка интернета и белых списков
         thread {
-            val hasInternet = checkInternet()
+            val result = checkInternetAndWhiteList()
 
             Handler(Looper.getMainLooper()).post {
                 val updatedViews = RemoteViews(context.packageName, R.layout.internet_widget)
@@ -84,17 +90,24 @@ class InternetWidget : AppWidgetProvider() {
 
                 // Скрываем точки загрузки
                 updatedViews.setViewVisibility(R.id.loading_dots, android.view.View.GONE)
+                updatedViews.setViewVisibility(R.id.wifi_icon, android.view.View.VISIBLE)
 
-                if (hasInternet) {
-                    // Wi-Fi иконка на зеленом фоне
-                    updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_green)
-                    updatedViews.setViewVisibility(R.id.wifi_icon, android.view.View.VISIBLE)
-                    updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_on) // Иконка Wi-Fi
-                } else {
-                    // Зачеркнутый Wi-Fi на красном фоне
-                    updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_red)
-                    updatedViews.setViewVisibility(R.id.wifi_icon, android.view.View.VISIBLE)
-                    updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_off) // Иконка Wi-Fi off
+                when (result) {
+                    "WHITELIST_ON" -> {
+                        // Белый список включен - оранжевый фон
+                        updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_orange)
+                        updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_wl)
+                    }
+                    "INTERNET_ON" -> {
+                        // Интернет есть - зеленый фон
+                        updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_green)
+                        updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_on)
+                    }
+                    else -> {
+                        // Нет интернета - красный фон
+                        updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_red)
+                        updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_off)
+                    }
                 }
 
                 appWidgetManager.updateAppWidget(appWidgetId, updatedViews)
@@ -131,23 +144,45 @@ class InternetWidget : AppWidgetProvider() {
         }, 10000)
     }
 
-    private fun checkInternet(): Boolean {
-        for (site in sitesToCheck) {
-            try {
-                val url = URL(site)
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 3000
-                connection.connect()
-                val code = connection.responseCode
-                connection.disconnect()
-
-                if (code in 200..399) {
-                    return true
-                }
-            } catch (e: Exception) {
-                // Переходим к следующему сайту
+    private fun checkInternetAndWhiteList(): String {
+        // Проверяем белый список
+        var whiteListAvailable = 0
+        for (site in whiteListSites) {
+            if (checkSite(site)) {
+                whiteListAvailable++
             }
         }
-        return false
+        val whitePercent = (whiteListAvailable * 100 / whiteListSites.size)
+
+        // Проверяем остальные сайты
+        var otherSitesAvailable = 0
+        for (site in sitesToCheck) {
+            if (checkSite(site)) {
+                otherSitesAvailable++
+            }
+        }
+        val otherPercent = (otherSitesAvailable * 100 / sitesToCheck.size)
+
+        // Анализ
+        return when {
+            whitePercent >= 80 && otherPercent <= 30 -> "WHITELIST_ON"
+            whitePercent >= 80 && otherPercent >= 70 -> "INTERNET_ON"
+            else -> "NO_INTERNET"
+        }
+    }
+
+    private fun checkSite(urlString: String): Boolean {
+        return try {
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = 3000
+            connection.connect()
+            val code = connection.responseCode
+            connection.disconnect()
+
+            code in 200..399
+        } catch (e: Exception) {
+            false
+        }
     }
 }
