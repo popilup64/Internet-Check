@@ -25,6 +25,7 @@ class InternetWidget : AppWidgetProvider() {
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
+        // Автоматическое обновление каждые 30 минут
         for (appWidgetId in appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId)
         }
@@ -60,9 +61,18 @@ class InternetWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_layout, pendingUpdate)
 
-        // Устанавливаем серый фон
+        // Круглый серый фон
         views.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_gray)
+
+        // Показываем три точки загрузки
+        views.setViewVisibility(R.id.loading_dots, android.view.View.VISIBLE)
+        views.setViewVisibility(R.id.wifi_icon, android.view.View.GONE)
+        views.setTextViewText(R.id.loading_dots, "● ● ●")
+
         appWidgetManager.updateAppWidget(appWidgetId, views)
+
+        // Запускаем анимацию точек
+        startDotsAnimation(context, appWidgetManager, appWidgetId, pendingUpdate)
 
         // Проверка интернета
         thread {
@@ -72,15 +82,53 @@ class InternetWidget : AppWidgetProvider() {
                 val updatedViews = RemoteViews(context.packageName, R.layout.internet_widget)
                 updatedViews.setOnClickPendingIntent(R.id.widget_layout, pendingUpdate)
 
+                // Скрываем точки загрузки
+                updatedViews.setViewVisibility(R.id.loading_dots, android.view.View.GONE)
+
                 if (hasInternet) {
+                    // Wi-Fi иконка на зеленом фоне
                     updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_green)
+                    updatedViews.setViewVisibility(R.id.wifi_icon, android.view.View.VISIBLE)
+                    updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_on) // Иконка Wi-Fi
                 } else {
+                    // Зачеркнутый Wi-Fi на красном фоне
                     updatedViews.setInt(R.id.widget_layout, "setBackgroundResource", R.drawable.widget_red)
+                    updatedViews.setViewVisibility(R.id.wifi_icon, android.view.View.VISIBLE)
+                    updatedViews.setImageViewResource(R.id.wifi_icon, R.drawable.ic_wifi_off) // Иконка Wi-Fi off
                 }
 
                 appWidgetManager.updateAppWidget(appWidgetId, updatedViews)
             }
         }
+    }
+
+    private fun startDotsAnimation(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        pendingUpdate: PendingIntent
+    ) {
+        val dots = listOf("● ○ ○", "○ ● ○", "○ ○ ●", "● ● ●")
+        var index = 0
+
+        val handler = Handler(Looper.getMainLooper())
+        val runnable = object : Runnable {
+            override fun run() {
+                val views = RemoteViews(context.packageName, R.layout.internet_widget)
+                views.setOnClickPendingIntent(R.id.widget_layout, pendingUpdate)
+                views.setTextViewText(R.id.loading_dots, dots[index % dots.size])
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+
+                index++
+                handler.postDelayed(this, 400)
+            }
+        }
+
+        handler.post(runnable)
+
+        handler.postDelayed({
+            handler.removeCallbacks(runnable)
+        }, 10000)
     }
 
     private fun checkInternet(): Boolean {

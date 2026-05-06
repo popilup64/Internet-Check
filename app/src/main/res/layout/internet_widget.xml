@@ -3,8 +3,27 @@
     android:id="@+id/widget_layout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:gravity="center"
-    android:background="@drawable/widget_background_round"
     android:clickable="true"
-    android:focusable="true" />
+    android:focusable="true"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/wifi_icon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_wifi_on"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/loading_dots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="● ● ●"
+        android:textSize="22sp"
+        android:textColor="#FFFFFF"
+        android:visibility="gone"
+        android:gravity="center" />
+
+</LinearLayout>
